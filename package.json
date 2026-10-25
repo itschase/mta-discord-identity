@@ -1,0 +1,13 @@
+{
+  "name": "mta-discord-identity",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted Discord identity and named-capability bridge for MTA",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node service/src/main.js",
+    "test": "node --test",
+    "validate:config": "node scripts/validate-config.js config/service.example.json"
+  }
+}

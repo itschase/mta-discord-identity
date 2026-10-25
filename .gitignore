@@ -1,0 +1,6 @@
+config/service.local.json
+data/
+*.log
+.env
+.DS_Store
+Thumbs.db

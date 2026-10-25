@@ -1,0 +1,38 @@
+{
+  "listen": { "host": "127.0.0.1", "port": 8787 },
+  "publicBaseUrl": "https://identity.example.invalid",
+  "installation": {
+    "id": "example-mta-server",
+    "secret": "",
+    "allowedCapabilities": ["staff.reports.view", "staff.players.kick", "community.queue.priority"]
+  },
+  "discord": {
+    "clientId": "",
+    "clientSecret": "",
+    "guildId": "",
+    "redirectUri": "https://identity.example.invalid/v1/oauth/discord/callback"
+  },
+  "policy": {
+    "roleCapabilities": {
+      "": ["staff.reports.view"]
+    },
+    "roleDonorTiers": {
+      "": "supporter"
+    }
+  },
+  "lifetimes": {
+    "challengeSeconds": 600,
+    "ticketSeconds": 60,
+    "sessionSeconds": 600
+  },
+  "rateLimits": {
+    "windowSeconds": 60,
+    "challengeCreatesPerWindow": 5,
+    "ticketExchangesPerWindow": 10
+  },
+  "audit": { "path": "data/audit.ndjson" },
+  "developmentProvider": {
+    "enabled": false,
+    "subjectRoles": {}
+  }
+}
