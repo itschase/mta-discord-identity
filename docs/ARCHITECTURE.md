@@ -27,7 +27,7 @@ The identity service is the only component that knows Discord application creden
 3. The user authenticates with Discord. The service verifies OAuth state, guild membership, and role policy server-side.
 4. The service redeems the challenge once and returns a short-lived, one-use ticket through the user-facing flow.
 5. The adapter exchanges the ticket while binding it to the same local account ID.
-6. The service issues a bounded session containing only named capabilities and a separate donor tier.
+6. The service issues a rolling session containing only named capabilities and a separate donor tier. Heartbeats may advance its short expiry but never beyond the configured absolute expiry.
 7. Heartbeats refresh policy. Unlink, account switch, logout, expiry, or failed authenticated refresh clears local grants.
 
 The vertical slice supplies a disabled-by-default development identity provider in place of step 3. It exists only for deterministic conformance tests and local demonstrations.

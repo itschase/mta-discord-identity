@@ -12,6 +12,12 @@ export class MemoryStore {
       if (session) session.revokedAt = at;
     }
     this.accountSessions.delete(accountId);
+    for (const challenge of this.challenges.values()) {
+      if (challenge.accountId === accountId && challenge.status === 'pending') challenge.status = 'cancelled';
+    }
+    for (const ticket of this.tickets.values()) {
+      if (ticket.accountId === accountId && !ticket.consumedAt) ticket.revokedAt = at;
+    }
     this.links.delete(accountId);
   }
 }

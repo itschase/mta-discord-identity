@@ -31,7 +31,7 @@ export class IdentityCore {
     challenge.status = 'redeemed'; challenge.discordSubject = discordSubject;
     this.store.links.set(challenge.accountId, { discordSubject, roleIds, linkedAt: now });
     const ticket = randomToken();
-    this.store.tickets.set(sha256(ticket), { accountId: challenge.accountId, grants, expiresAt: now + this.config.lifetimes.ticketSeconds, consumedAt: null });
+    this.store.tickets.set(sha256(ticket), { accountId: challenge.accountId, expiresAt: now + this.config.lifetimes.ticketSeconds, consumedAt: null, revokedAt: null });
     await this.audit.append('challenge.redeemed', { challengeId: challenge.id, accountId: challenge.accountId, discordSubject, capabilityCount: grants.capabilities.length, donorTier: grants.donorTier });
     return { ticket, expiresAt: now + this.config.lifetimes.ticketSeconds };
   }
@@ -52,10 +52,21 @@ export class IdentityCore {
     const rate = this.limiter.take(`exchange:${accountId}`, this.config.rateLimits.ticketExchangesPerWindow, now);
     if (!rate.allowed) fail(429, 'RATE_LIMITED', `retry after ${rate.retryAfter} seconds`);
     const item = this.store.tickets.get(sha256(ticket));
-    if (!item || item.accountId !== accountId || item.expiresAt <= now || item.consumedAt) fail(400, 'INVALID_TICKET', 'ticket is invalid, expired, or already consumed');
+    if (!item || item.accountId !== accountId || item.expiresAt <= now || item.consumedAt || item.revokedAt) fail(400, 'INVALID_TICKET', 'ticket is invalid, expired, revoked, or already consumed');
+    const link = this.store.links.get(accountId);
+    if (!link) fail(400, 'INVALID_TICKET', 'ticket account is no longer linked');
     item.consumedAt = now;
     const sessionId = randomToken(16), bearer = randomToken();
-    const session = { id: sessionId, tokenHash: sha256(bearer), accountId, grants: item.grants, issuedAt: now, expiresAt: now + this.config.lifetimes.sessionSeconds, revokedAt: null };
+    const session = {
+      id: sessionId,
+      tokenHash: sha256(bearer),
+      accountId,
+      grants: evaluatePolicy(this.config, link.roleIds),
+      issuedAt: now,
+      expiresAt: now + this.config.lifetimes.sessionSeconds,
+      absoluteExpiresAt: now + this.config.lifetimes.absoluteSessionSeconds,
+      revokedAt: null
+    };
     this.store.sessions.set(sessionId, session);
     const set = this.store.accountSessions.get(accountId) ?? new Set(); set.add(sessionId); this.store.accountSessions.set(accountId, set);
     await this.audit.append('session.created', { sessionId, accountId, expiresAt: session.expiresAt });
@@ -72,6 +83,7 @@ export class IdentityCore {
     const link = this.store.links.get(session.accountId);
     if (!link) fail(401, 'SESSION_INVALID', 'account link no longer exists');
     session.grants = evaluatePolicy(this.config, link.roleIds);
+    session.expiresAt = Math.min(this.clock() + this.config.lifetimes.sessionSeconds, session.absoluteExpiresAt);
     return this.sessionView(session);
   }
   async unlink(accountId) {
@@ -79,6 +91,6 @@ export class IdentityCore {
     await this.audit.append('account.unlinked', { accountId });
   }
   sessionView(session, bearer) {
-    return { sessionId: session.id, ...(bearer ? { sessionToken: bearer } : {}), accountId: session.accountId, capabilities: session.grants.capabilities, donorTier: session.grants.donorTier, issuedAt: session.issuedAt, expiresAt: session.expiresAt };
+    return { sessionId: session.id, ...(bearer ? { sessionToken: bearer } : {}), accountId: session.accountId, capabilities: session.grants.capabilities, donorTier: session.grants.donorTier, issuedAt: session.issuedAt, expiresAt: session.expiresAt, absoluteExpiresAt: session.absoluteExpiresAt };
   }
 }

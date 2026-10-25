@@ -23,7 +23,8 @@
   "lifetimes": {
     "challengeSeconds": 600,
     "ticketSeconds": 60,
-    "sessionSeconds": 600
+    "sessionSeconds": 600,
+    "absoluteSessionSeconds": 3600
   },
   "rateLimits": {
     "windowSeconds": 60,

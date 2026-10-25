@@ -13,7 +13,7 @@
 | Threat | Control in the slice | Production follow-up |
 |---|---|---|
 | Client supplies another account ID | Only the server host adapter resolves account IDs | Conformance test every host integration |
-| Ticket theft/replay | Opaque random ticket, hashed at rest, account-bound, 60-second expiry, atomic one-use flag | Transactional consume in PostgreSQL |
+| Ticket theft/replay | Opaque random ticket, hashed at rest, account-bound, 60-second expiry, one-use flag, current-policy evaluation, unlink revocation | Transactional consume in PostgreSQL |
 | Session theft | Opaque random bearer, hashed at rest, bounded expiry, unlink revocation | Key rotation, mTLS/service network, durable revocation |
 | Discord role leakage | Policy evaluation stays in service; responses contain names only | Response-schema regression tests |
 | Donor implies staff | Separate mapping and output field | Policy review workflow and protected config |

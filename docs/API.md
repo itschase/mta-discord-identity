@@ -44,7 +44,8 @@ Response 201:
   "capabilities": ["staff.reports.view"],
   "donorTier": "supporter",
   "issuedAt": 1790000000,
-  "expiresAt": 1790000600
+  "expiresAt": 1790000600,
+  "absoluteExpiresAt": 1790003600
 }
 ```
 
@@ -52,7 +53,7 @@ Raw Discord guilds, roles, names, and IDs are forbidden in this response.
 
 ### `POST /v1/sessions/refresh`
 
-Send installation authentication and `X-Session-Token`. Re-evaluates current policy and returns the session view without rotating the token. A 401 means the adapter must clear grants immediately.
+Send installation authentication and `X-Session-Token`. Re-evaluates current policy and advances the rolling expiry without exceeding `absoluteExpiresAt`; it does not rotate the token. A 401 means the adapter must clear grants immediately. Reaching the absolute expiry requires a new link proof and ticket.
 
 ### `POST /v1/accounts/unlink`
 
