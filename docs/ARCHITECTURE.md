@@ -30,7 +30,9 @@ The identity service is the only component that knows Discord application creden
 6. The service issues a rolling session containing only named capabilities and a separate donor tier. Heartbeats may advance its short expiry but never beyond the configured absolute expiry.
 7. Heartbeats refresh policy. Unlink, account switch, logout, expiry, or failed authenticated refresh clears local grants.
 
-The vertical slice supplies a disabled-by-default development identity provider in place of step 3. It exists only for deterministic conformance tests and local demonstrations.
+The production provider implements step 3 using Discord Authorization Code + PKCE with `identify`, exact configured redirect URI, hashed one-use state, server-side token exchange, and a bot-authenticated current-member lookup. The OAuth access token is used only to resolve the Discord subject and is not stored. A disabled-by-default development provider remains available only for deterministic conformance tests and isolated demonstrations.
+
+Current-role lookup runs again at ticket exchange and every authenticated session refresh. Member removal revokes the account link and all sessions; role changes replace cached grants. Therefore revocation latency is bounded by the MTA heartbeat interval while Discord is reachable. A Gateway listener is not included in this release.
 
 ## Deployment components
 

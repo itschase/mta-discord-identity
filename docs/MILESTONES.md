@@ -12,11 +12,11 @@
 
 ## M1 — Discord-backed identity ([Issue #1](https://github.com/itschase/mta-discord-identity/issues/1))
 
-- [ ] Implement Authorization Code + PKCE and one-use signed state
-- [ ] Add Discord bot guild/member role lookup with bounded retry/backoff
-- [ ] Add exact redirect/origin validation and production-mode config guard
-- [ ] Add encrypted provider-token storage only if refresh tokens are necessary
-- [ ] Add role/member removal revocation worker and observability
+- [x] Implement Authorization Code + PKCE and one-use hashed state
+- [x] Add Discord bot guild/member role lookup with bounded timeout
+- [x] Add exact redirect validation and production-mode config guard
+- [x] Avoid provider-token storage; no refresh token is required
+- [x] Add heartbeat-bounded role/member revocation and audit event
 - [ ] Add idempotency-key storage for mutating API operations
 
 ## M2 — Durable multi-instance service ([Issue #2](https://github.com/itschase/mta-discord-identity/issues/2))

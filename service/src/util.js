@@ -18,6 +18,14 @@ export const json = (response, status, body, requestId) => {
 };
 export const errorBody = (code, message, requestId) => ({ error: { code, message, requestId } });
 export async function readJson(request, maxBytes = 32_768) {
+  const raw = await readBody(request, maxBytes);
+  try { return raw ? JSON.parse(raw) : {}; }
+  catch { throw Object.assign(new Error('invalid JSON'), { status: 400, code: 'INVALID_JSON' }); }
+}
+export async function readForm(request, maxBytes = 4096) {
+  return new URLSearchParams(await readBody(request, maxBytes));
+}
+async function readBody(request, maxBytes) {
   let size = 0;
   const chunks = [];
   for await (const chunk of request) {
@@ -25,6 +33,5 @@ export async function readJson(request, maxBytes = 32_768) {
     if (size > maxBytes) throw Object.assign(new Error('request body too large'), { status: 413, code: 'BODY_TOO_LARGE' });
     chunks.push(chunk);
   }
-  try { return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; }
-  catch { throw Object.assign(new Error('invalid JSON'), { status: 400, code: 'INVALID_JSON' }); }
+  return Buffer.concat(chunks).toString('utf8');
 }

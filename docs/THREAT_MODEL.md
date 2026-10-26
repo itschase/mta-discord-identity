@@ -22,7 +22,8 @@
 | Brute force/challenge abuse | High-entropy codes, short expiry, fixed-window account limits | Shared IP/account limiter and abuse telemetry |
 | Configuration grants unintended power | Installation allowlist intersects role mapping | Signed policy releases and two-person review |
 | Audit modification | Hash chain exposes edits/reordering within exported stream | WORM/object-lock export and external checkpoints |
-| OAuth login CSRF | Required signed, one-use OAuth state in M1 contract | Implement PKCE and exact redirect allowlist |
+| OAuth login CSRF/code interception | High-entropy hashed one-use state, PKCE S256, exact configured redirect | Validate against a live Discord application deployment |
+| Stale Discord roles | Current member lookup at ticket exchange and each heartbeat; absence revokes link/sessions | Optional Guild Members Gateway consumer for lower latency |
 | SSRF/redirect downgrade from MTA | Fixed operator-configured base URL, no user URL input | Enforce HTTPS and certificate policy at startup |
 
 ## Non-goals
@@ -33,5 +34,5 @@ The service does not decide faction membership, duty, target immunity, ownership
 
 - Lifecycle state is process-local and disappears on restart.
 - Audit output is tamper-evident only within the file and has no external checkpoint.
-- The real Discord OAuth/bot path is specified but not implemented.
+- Discord OAuth/bot behavior is locally tested with protocol fakes but not yet exercised against real provider credentials.
 - The example MTA resource has been statically reviewed but not run inside an MTA server.

@@ -1,16 +1,19 @@
 {
   "listen": { "host": "127.0.0.1", "port": 8787 },
   "publicBaseUrl": "https://identity.example.invalid",
+  "environment": "production",
   "installation": {
     "id": "example-mta-server",
-    "secret": "",
+    "secretEnv": "MDI_INSTALLATION_SECRET",
     "allowedCapabilities": ["staff.reports.view", "staff.players.kick", "community.queue.priority"]
   },
   "discord": {
     "clientId": "",
-    "clientSecret": "",
     "guildId": "",
-    "redirectUri": "https://identity.example.invalid/v1/oauth/discord/callback"
+    "redirectUri": "https://identity.example.invalid/v1/oauth/discord/callback",
+    "requestTimeoutMs": 5000,
+    "clientSecretEnv": "MDI_DISCORD_CLIENT_SECRET",
+    "botTokenEnv": "MDI_DISCORD_BOT_TOKEN"
   },
   "policy": {
     "roleCapabilities": {
@@ -22,6 +25,7 @@
   },
   "lifetimes": {
     "challengeSeconds": 600,
+    "oauthStateSeconds": 600,
     "ticketSeconds": 60,
     "sessionSeconds": 600,
     "absoluteSessionSeconds": 3600

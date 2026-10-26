@@ -5,6 +5,7 @@ export class MemoryStore {
     this.sessions = new Map();
     this.accountSessions = new Map();
     this.links = new Map();
+    this.oauthStates = new Map();
   }
   revokeAccount(accountId, at) {
     for (const id of this.accountSessions.get(accountId) ?? []) {

@@ -8,12 +8,13 @@ export function fixture(overrides = {}) {
     listen: { host: '127.0.0.1', port: 0 },
     publicBaseUrl: 'https://identity.test',
     installation: { id: 'test', secret: 'a'.repeat(32), allowedCapabilities: ['staff.reports.view', 'community.queue.priority'] },
-    discord: { clientId: '', clientSecret: '', guildId: '', redirectUri: '' },
+    environment: 'test',
+    discord: { clientId: '123', guildId: '456', redirectUri: 'https://identity.test/v1/oauth/discord/callback', requestTimeoutMs: 5000, clientSecretEnv: 'TEST_CLIENT_SECRET', botTokenEnv: 'TEST_BOT_TOKEN' },
     policy: {
       roleCapabilities: { '100': ['staff.reports.view', 'staff.not-allowed'], '200': ['community.queue.priority'] },
       roleDonorTiers: { '300': 'supporter' }
     },
-    lifetimes: { challengeSeconds: 600, ticketSeconds: 60, sessionSeconds: 600, absoluteSessionSeconds: 3600 },
+    lifetimes: { challengeSeconds: 600, oauthStateSeconds: 600, ticketSeconds: 60, sessionSeconds: 600, absoluteSessionSeconds: 3600 },
     rateLimits: { windowSeconds: 60, challengeCreatesPerWindow: 5, ticketExchangesPerWindow: 10 },
     audit: { path: 'unused' },
     developmentProvider: { enabled: true, subjectRoles: { discordUser: ['100', '300'] } },

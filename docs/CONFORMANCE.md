@@ -11,13 +11,18 @@ Automated in v0.1:
 - audit records form a valid hash chain;
 - HTTP installation authentication and error envelopes;
 - API output does not contain role IDs.
+- PKCE uses S256 and authorization URLs bind exact redirect and state;
+- OAuth state rejects altered, expired, and replayed values;
+- code exchange uses server-only credentials and current bot-resolved roles;
+- current role changes replace grants and guild removal revokes sessions.
 
 Required before production:
 
-- OAuth state/PKCE, redirect allowlist, guild removal, bot token rotation;
+- live Discord redirect registration, guild removal, and bot token rotation;
 - PostgreSQL transactional ticket consumption under concurrency;
 - multi-instance rate limit and revocation propagation;
 - restart recovery and audit checkpoint verification;
+- optional Discord Gateway member-event consumer for lower revocation latency;
 - MTA runtime tests for resource stop, player quit/account switch, callback reordering, timeout, DNS/TLS failure, and service recovery;
 - host adapter tests proving client-supplied account IDs cannot enter the resolver;
 - load and abuse tests with secret/token redaction assertions.

@@ -33,3 +33,28 @@ test('HTTP vertical slice creates, redeems, and exchanges without role leakage',
   assert.equal(session.donorTier, 'supporter');
   assert.equal(JSON.stringify(session).includes('100'), false);
 }));
+
+test('browser link flow keeps challenge code out of URLs and renders one-use ticket', async () => {
+  const calls = [];
+  const core = {
+    startDiscordOAuth: async (code) => { calls.push(['start', code]); return { authorizationUrl: 'https://discord.com/oauth2/authorize?state=opaque' }; },
+    completeDiscordOAuth: async (state, code) => { calls.push(['complete', state, code]); return { ticket: 'safe_ticket-123' }; },
+    denyDiscordOAuth: async (state) => calls.push(['deny', state])
+  };
+  const config = { installation: { secret: 'a'.repeat(32) } };
+  const server = createIdentityServer(config, core);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const page = await fetch(`${url}/link`);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get('content-security-policy'), /form-action 'self'/);
+    const redirect = await fetch(`${url}/link`, { method: 'POST', redirect: 'manual', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'code=user-secret-code' });
+    assert.equal(redirect.status, 303);
+    assert.equal(redirect.headers.get('location'), 'https://discord.com/oauth2/authorize?state=opaque');
+    assert.equal(redirect.headers.get('location').includes('user-secret-code'), false);
+    const callback = await fetch(`${url}/v1/oauth/discord/callback?code=discord-code&state=opaque`);
+    assert.match(await callback.text(), /safe_ticket-123/);
+    assert.deepEqual(calls, [['start', 'user-secret-code'], ['complete', 'opaque', 'discord-code']]);
+  } finally { await new Promise((resolve) => server.close(resolve)); }
+});

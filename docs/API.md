@@ -59,14 +59,22 @@ Send installation authentication and `X-Session-Token`. Re-evaluates current pol
 
 Body: `{"accountId":"..."}`. Removes the link and revokes all account sessions. This operation is idempotent.
 
+### `POST /v1/oauth/discord/start`
+
+Body: `{"code":"user-entered-link-code"}`. Validates the pending challenge, creates a high-entropy hashed one-use state and PKCE S256 verifier, and returns the Discord authorization URL. The browser-facing `GET /link` and `POST /link` form performs the same operation without putting the link code in a URL.
+
+### `GET /v1/oauth/discord/callback`
+
+The only accepted redirect URI is exactly `{publicBaseUrl}/v1/oauth/discord/callback`. The callback requires both the exact one-use `state` and authorization `code`, exchanges the code server-side with the matching PKCE verifier, resolves `/users/@me`, and fetches the current configured-guild member using the bot token. It displays a short-lived one-use MTA ticket; Discord tokens and roles are never returned.
+
 ### `POST /v1/development/redeem`
 
 Available only when the development provider is enabled. It accepts a challenge code and configured fake subject. Never expose it in a production configuration.
 
-## Real Discord provider contract (M1)
+## Discord provider behavior
 
-- Authorization Code flow with PKCE, exact redirect URI, one-use signed state bound to challenge, and 10-minute maximum state lifetime.
+- Authorization Code flow with PKCE S256, exact redirect URI, hashed one-use state bound to challenge, and 10-minute maximum state lifetime.
 - Server-side code exchange; validate user identity through Discord and fetch configured guild membership/roles with bot credentials.
 - Deny users outside configured guild policy.
 - Never pass provider access/refresh tokens to MTA.
-- Refresh or revoke local grants on role/member removal using bounded polling and Discord events where available.
+- Re-fetch current membership and roles on ticket exchange and each heartbeat refresh. Member absence revokes the link and all sessions. Gateway events are a future latency optimization, not a current runtime claim.

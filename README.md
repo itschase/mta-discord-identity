@@ -14,14 +14,14 @@ Discord roles and credentials never enter client Lua. Donor tiers are descriptiv
 
 This repository includes a dependency-free vertical slice:
 
-- an HTTP identity service with installation authentication;
-- link challenge creation, development-provider redemption, one-use ticket exchange, bounded sessions, grant refresh, unlink/revocation, rate limits, and hash-chained audit output;
+- an HTTP identity service with environment-injected installation authentication;
+- Discord Authorization Code + PKCE, exact one-use state validation, bot-resolved current guild roles, link challenges, one-use ticket exchange, bounded sessions, heartbeat revocation, rate limits, and hash-chained audit output;
 - configurable Discord-role-to-capability and donor-tier policy;
 - a generic MTA resource using asynchronous `fetchRemote`, request generations, cache expiry, heartbeat refresh, revocation handling, and fail-closed capability checks;
 - a host-adapter example with no OwlMTA schema dependency;
 - contract and conformance tests.
 
-The development redemption endpoint is intentionally disabled unless `developmentProvider.enabled` is true. Real Discord OAuth and a durable database are the next implementation milestone; see [docs/MILESTONES.md](docs/MILESTONES.md).
+The development redemption endpoint is intentionally disabled unless `developmentProvider.enabled` is true and is rejected in production mode. Durable storage and optional Gateway-driven revocation remain later milestones; see [docs/MILESTONES.md](docs/MILESTONES.md).
 
 ## Quick start
 
@@ -29,7 +29,10 @@ Requires Node.js 24+; no package install is needed.
 
 ```powershell
 Copy-Item config/service.example.json config/service.local.json
-# Fill installation.secret and developmentProvider.subjectRoles for local testing.
+# Fill only non-secret Discord IDs in service.local.json.
+$env:MDI_INSTALLATION_SECRET = '<generate-at-least-24-random-characters>'
+$env:MDI_DISCORD_CLIENT_SECRET = '<from-operator-secret-store>'
+$env:MDI_DISCORD_BOT_TOKEN = '<from-operator-secret-store>'
 $env:MDI_CONFIG = (Resolve-Path config/service.local.json)
 node service/src/main.js
 ```
@@ -41,7 +44,7 @@ node --test
 node scripts/validate-config.js config/service.example.json
 ```
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) before exposing the service.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) before exposing the service. The Discord protocol references used by the implementation are recorded in [docs/DISCORD_PROTOCOL_SOURCES.md](docs/DISCORD_PROTOCOL_SOURCES.md).
 
 ## Design guarantees
 
