@@ -4,17 +4,39 @@ The identity resource intentionally knows nothing about a gamemode's database, r
 
 ## Required integration
 
-Handle the server-only event `mta-discord-identity:resolve-account`. The handler receives `(player, reply)` and calls `reply(accountId)` with a stable string identifier obtained from trusted server login state. Never accept this value from a client event or synchronized element data.
+Handle the server-only event `mta-discord-identity:resolve-account`. The handler receives `(player, reply)` and must call `reply(accountId)` synchronously, before the event handler returns, because the adapter reads the callback result immediately. `accountId` must be a non-empty string derived from the host's current trusted server-side login session. Never accept it from a client event, command argument, or synchronized element data.
 
-## Consuming grants
+The generic example uses MTA's server account name only to demonstrate the boundary. A host with its own account database should validate that the player is currently authenticated and return that database's stable internal account ID. The handler should also verify that the event source is the identity adapter's resource root, as the example does.
+
+The callback-function event contract has not yet been exercised in a live multi-resource MTA runtime. Treat it as runtime-unverified until the host conformance test confirms synchronous callback delivery across resources.
+
+## Exports and asynchronous results
 
 Use server exports:
 
-- `beginLink(player)` starts a challenge and emits `mta-discord-identity:link-challenge`.
-- `exchangeTicket(player, ticket)` consumes a ticket and caches a bounded session.
-- `hasCapability(player, name)` returns false when missing, expired, revoked, or unavailable.
-- `getDonorTier(player)` returns an independent informational tier or nil.
-- `clearPlayerSession(player)` invalidates cached state on logout/account switch.
+- `beginLink(player)` resolves the current host account and starts an asynchronous challenge request.
+- `exchangeTicket(player, ticket)` resolves the account again and asynchronously exchanges a one-use ticket. A successful response caches the bounded session for that player and account.
+- `hasCapability(player, name)` reads only the adapter-local cache and returns true when that cache contains an unexpired named capability.
+- `getDonorTier(player)` reads the same unexpired local entry and returns its independent informational tier or nil.
+- `clearPlayerSession(player)` increments the player's request generation and deletes only the adapter-local cached session.
+
+`beginLink` and `exchangeTicket` return only the immediate `fetchRemote` initiation result. They do not return the completed HTTP result. Host code must observe these server-only events instead:
+
+- `mta-discord-identity:link-challenge(player, result, statusCode)` after challenge creation completes;
+- `mta-discord-identity:grants-changed(player)` after grants are stored or refreshed, and when expiry or a failed refresh follows the event-emitting clear paths;
+- `mta-discord-identity:session-failed(player, statusCode)` when ticket exchange does not produce a valid bound session.
+
+These events are emitted with the adapter resource root as `source`. Host handlers should validate that source before consuming their arguments. A superseded request callback is ignored when its player generation no longer matches.
+
+## Account lifecycle and cleanup
+
+Call `clearPlayerSession(player)` immediately on host logout and before binding the same player element to a different account. The adapter also calls it on `onPlayerQuit`. If a host's character switch preserves the same authenticated account, the account-level identity session may remain; if the switch also logs out or replaces the account, clear it first.
+
+The heartbeat independently resolves the current account. If it differs from the account stored with the session, the adapter clears local state without emitting `grants-changed`. This is a fallback, not a replacement for clearing synchronously during logout or account switch: `hasCapability` itself does not re-resolve the account on every call.
+
+`clearPlayerSession` is not unlink. It does not call the service, delete the account-to-Discord link, or revoke the remote session. Permanent unlink is the authenticated service operation `POST /v1/accounts/unlink`; the current MTA resource does not expose that operation. A host unlink workflow therefore requires a separate adapter/API operation and should clear local state immediately while remote revocation is completed.
+
+Refresh failure, an invalid response, account mismatch, or local expiry clears cached grants. Service-side guild-member removal also revokes the link and service sessions when a refresh reaches the service. Until a heartbeat runs or the local expiry is reached, `hasCapability` can still return the previously cached grant. A network/provider outage therefore becomes fail-closed at the next failed refresh or local expiry, while ordinary local login and gameplay should remain independent of the adapter.
 
 Events are server-only. Do not mirror capabilities, donor tiers, tickets, session tokens, role IDs, or installation secrets into element data or client Lua.
 
