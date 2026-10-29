@@ -4,6 +4,10 @@ local loginAttempts = setmetatable({}, { __mode = "k" })
 local pendingLoginAdmissions = setmetatable({}, { __mode = "k" })
 local resourceGeneration = 1
 
+function getContractVersion()
+    return 2
+end
+
 local function nowSeconds()
     return getRealTime().timestamp
 end
@@ -246,10 +250,18 @@ local function refresh(player)
     local generation = generations[player] or 0
     fetchRemote(IdentityConfig.baseUrl .. "/v1/sessions/refresh", options, function(payload, info)
         if not isElement(player) or generations[player] ~= generation then return end
-        local result = info.success and fromJSON(payload) or nil
+        local decoded = type(payload) == "string" and fromJSON(payload) or nil
+        local result = info.success and decoded or nil
         if not result or result.accountId ~= accountId then
+            local errorCode = type(decoded) == "table" and type(decoded.error) == "table" and decoded.error.code or nil
+            local confirmedRevocation = errorCode == "IDENTITY_AUTHORIZATION_REVOKED"
+            local revokedAccountId = entry.accountId
             clearPlayerSession(player)
-            triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player)
+            if confirmedRevocation then
+                triggerEvent("mta-discord-identity:authorization-revoked", resourceRoot, player, revokedAccountId)
+            else
+                triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player)
+            end
             return
         end
         local caps = {}
@@ -268,6 +280,7 @@ addEvent("mta-discord-identity:login-session-activated", false)
 addEvent("mta-discord-identity:login-session-failed", false)
 addEvent("mta-discord-identity:grants-changed", false)
 addEvent("mta-discord-identity:session-failed", false)
+addEvent("mta-discord-identity:authorization-revoked", false)
 addEventHandler("onPlayerQuit", root, function() clearPlayerSession(source) end)
 addEventHandler("onResourceStop", resourceRoot, function() resourceGeneration = resourceGeneration + 1 end)
 setTimer(function() for player in pairs(cache) do refresh(player) end end, IdentityConfig.heartbeatMs, 0)

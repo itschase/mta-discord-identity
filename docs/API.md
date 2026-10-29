@@ -10,7 +10,7 @@ Errors use:
 {"error":{"code":"INVALID_TICKET","message":"ticket is invalid, expired, or already consumed","requestId":"..."}}
 ```
 
-Stable codes include `INSTALLATION_UNAUTHORIZED`, `INVALID_ACCOUNT_ID`, `INVALID_CHALLENGE`, `GUILD_POLICY_DENIED`, `INVALID_TICKET`, `SESSION_INVALID`, `RATE_LIMITED`, `NOT_FOUND`, and `INTERNAL_ERROR`.
+Stable codes include `INSTALLATION_UNAUTHORIZED`, `INVALID_ACCOUNT_ID`, `INVALID_CHALLENGE`, `GUILD_POLICY_DENIED`, `INVALID_TICKET`, `SESSION_INVALID`, `IDENTITY_AUTHORIZATION_REVOKED`, `RATE_LIMITED`, `NOT_FOUND`, and `INTERNAL_ERROR`.
 
 ## Endpoints
 
@@ -65,7 +65,7 @@ Response 200: `{"accountId":"local-stable-id","sessionTicket":"server-held-one-u
 
 ### `POST /v1/sessions/refresh`
 
-Send installation authentication and `X-Session-Token`. Re-evaluates current policy and advances the rolling expiry without exceeding `absoluteExpiresAt`; it does not rotate the token. A 401 means the adapter must clear grants immediately. Reaching the absolute expiry requires a new link proof and ticket.
+Send installation authentication and `X-Session-Token`. Re-evaluates current policy and advances the rolling expiry without exceeding `absoluteExpiresAt`; it does not rotate the token. Any 401 means the adapter must clear grants immediately. `IDENTITY_AUTHORIZATION_REVOKED` specifically confirms that the link was removed or required Discord membership was revoked; `SESSION_INVALID` covers invalid or expired session proof and is not by itself a confirmed identity-revocation signal. Reaching the absolute expiry requires a new link proof and ticket.
 
 ### `POST /v1/accounts/unlink`
 

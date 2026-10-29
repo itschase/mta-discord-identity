@@ -16,6 +16,7 @@ Use server exports:
 
 Every export requires an MTA server resource caller. Pre-auth begin, exchange, and activation retain the initiating host resource and reject a later call from a different resource, in addition to the player-generation and account bindings.
 
+- `getContractVersion()` returns host contract `2`; hosts should require this export before enabling the v2 login/session lifecycle.
 - `beginLogin(player)` starts a distinct asynchronous pre-authentication challenge and does not require the host account resolver.
 - `exchangeLoginTicket(player, ticket)` exchanges against the adapter-held challenge, connection token, and generation. The adapter retains the returned activation ticket and emits only the linked opaque account reference; it does not bind the host account automatically.
 - `activateLoginSession(player, accountId)` is called only after the host's local admission checks succeed. It requires the exact adapter-held pending account/generation, exchanges the server-held activation ticket, then caches the bounded session and emits the activation event. The account ID is a trusted server-to-server host result, never client input.
@@ -31,6 +32,7 @@ The asynchronous exports return only the immediate `fetchRemote` initiation resu
 - `mta-discord-identity:login-authorized(player, accountId)` after a bound one-use ticket returns exactly one existing opaque account reference;
 - `mta-discord-identity:login-failed(player, statusCode)` when challenge creation or exchange fails;
 - `mta-discord-identity:login-session-activated(player, accountId)` after post-admission activation stores a bounded capability session;
+- `mta-discord-identity:authorization-revoked(player, accountId)` only when refresh receives the service's explicit terminal identity-revocation code;
 - `mta-discord-identity:login-session-failed(player, statusCode)` when post-admission activation fails without publishing grants;
 - `mta-discord-identity:link-challenge(player, result, statusCode)` after challenge creation completes;
 - `mta-discord-identity:grants-changed(player)` after grants are stored or refreshed, and when expiry or a failed refresh follows the event-emitting clear paths;
@@ -48,7 +50,7 @@ The heartbeat independently resolves the current account. If it differs from the
 
 `clearPlayerSession` is not unlink. It does not call the service, delete the account-to-Discord link, or revoke the remote session. Permanent unlink is the authenticated service operation `POST /v1/accounts/unlink`; the current MTA resource does not expose that operation. A host unlink workflow therefore requires a separate adapter/API operation and should clear local state immediately while remote revocation is completed.
 
-Refresh failure, an invalid response, account mismatch, or local expiry clears cached grants. Service-side guild-member removal also revokes the link and service sessions when a refresh reaches the service. Until a heartbeat runs or the local expiry is reached, `hasCapability` can still return the previously cached grant. A network/provider outage therefore becomes fail-closed at the next failed refresh or local expiry, while ordinary local login and gameplay should remain independent of the adapter.
+Refresh failure, an invalid response, account mismatch, or local expiry clears cached grants. Service-side guild-member removal also revokes the link and service sessions when a refresh reaches the service. The adapter emits `authorization-revoked` only for the stable `IDENTITY_AUTHORIZATION_REVOKED` response; transport failure, provider outage, ordinary role changes, and generic expiry do not emit it. Until a heartbeat runs or the local expiry is reached, `hasCapability` can still return the previously cached grant. A network/provider outage therefore becomes fail-closed for grants at the next failed refresh or local expiry, while the host decides its separate login/outage policy.
 
 Events are server-only. Do not mirror capabilities, donor tiers, tickets, session tokens, role IDs, or installation secrets into element data or client Lua.
 

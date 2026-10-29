@@ -63,7 +63,7 @@ test('current Discord roles are re-evaluated and membership removal revokes sess
   assert.deepEqual(refreshed.capabilities, ['community.queue.priority']);
   assert.equal(refreshed.donorTier, 'supporter');
   roles = null;
-  await assert.rejects(f.core.refreshSession(session.sessionToken), { code: 'SESSION_INVALID' });
+  await assert.rejects(f.core.refreshSession(session.sessionToken), { code: 'IDENTITY_AUTHORIZATION_REVOKED' });
   assert.equal(f.store.links.has('account-1'), false);
   assert.equal(f.audit.records.at(-1).event, 'membership.revoked');
 });

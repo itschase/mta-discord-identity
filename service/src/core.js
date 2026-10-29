@@ -196,13 +196,15 @@ export class IdentityCore {
   authenticateSession(bearer) {
     const hash = sha256(bearer ?? '');
     const session = [...this.store.sessions.values()].find((item) => item.tokenHash === hash);
-    if (!session || session.revokedAt || session.expiresAt <= this.clock()) fail(401, 'SESSION_INVALID', 'session is invalid, expired, or revoked');
+    if (!session) fail(401, 'SESSION_INVALID', 'session is invalid or expired');
+    if (session.revokedAt) fail(401, 'IDENTITY_AUTHORIZATION_REVOKED', 'identity authorization was revoked');
+    if (session.expiresAt <= this.clock()) fail(401, 'SESSION_INVALID', 'session is invalid or expired');
     return session;
   }
   async refreshSession(bearer) {
     const session = this.authenticateSession(bearer);
     const link = this.store.links.get(session.accountId);
-    if (!link) fail(401, 'SESSION_INVALID', 'account link no longer exists');
+    if (!link) fail(401, 'IDENTITY_AUTHORIZATION_REVOKED', 'account link no longer exists');
     const roleIds = await this.#resolveCurrentRoles(link, session.accountId);
     session.grants = evaluatePolicy(this.config, roleIds);
     session.expiresAt = Math.min(this.clock() + this.config.lifetimes.sessionSeconds, session.absoluteExpiresAt);
@@ -227,7 +229,7 @@ export class IdentityCore {
         const now = this.clock();
         this.store.revokeAccount(accountId, now);
         await this.audit.append('membership.revoked', { accountId, discordSubject: link.discordSubject });
-        fail(401, 'SESSION_INVALID', 'Discord guild membership was revoked');
+        fail(401, 'IDENTITY_AUTHORIZATION_REVOKED', 'Discord guild membership was revoked');
       }
       throw error;
     }

@@ -54,7 +54,7 @@ test('unlink revokes every session immediately', async () => {
   const f = fixture();
   const session = await linkedSession(f);
   await f.core.unlink('account-1');
-  assert.throws(() => f.core.authenticateSession(session.sessionToken), { code: 'SESSION_INVALID' });
+  assert.throws(() => f.core.authenticateSession(session.sessionToken), { code: 'IDENTITY_AUTHORIZATION_REVOKED' });
 });
 
 test('unlink revokes pending challenges and unconsumed tickets', async () => {
