@@ -17,6 +17,7 @@ Automated source coverage introduced in v0.1:
 - current role changes replace grants and guild removal revokes sessions.
 - pre-auth login resolves only an existing link, emits only its opaque account reference to the host, and keeps the one-use activation ticket inside the adapter;
 - no capability session exists before the host accepts local admission and `activateLoginSession` succeeds;
+- capability and donor queries are accepted only from the resource that established the session, re-resolve the host's current account, and clear a mismatched session;
 - pre-auth login tickets are one-use and reject a mismatched connection generation without consuming the valid ticket.
 - link creation rejects a second account for the same installation-scoped Discord subject, while login independently fails closed on ambiguity.
 

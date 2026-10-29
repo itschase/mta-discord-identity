@@ -20,6 +20,7 @@
 - [ ] Add idempotency-key storage for mutating API operations
 - [x] Add a connection-bound pre-authentication challenge for already-linked identities (source only; M2/M3 remain release blockers)
 - [x] Stage capability-session activation behind explicit host acceptance of local admission (source only; M2/M3 remain release blockers)
+- [x] Bind grant queries to the establishing host resource and re-resolve the trusted account at every query (source only; M2/M3 remain release blockers)
 
 ## M2 — Durable multi-instance service ([Issue #2](https://github.com/itschase/mta-discord-identity/issues/2))
 

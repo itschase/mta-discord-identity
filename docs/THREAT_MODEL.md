@@ -19,6 +19,7 @@
 | Donor implies staff | Separate mapping and output field | Policy review workflow and protected config |
 | Stale async callback restores grants | Per-player and per-resource generations | Cancellation handles and chaos tests in MTA |
 | Service outage grants authority | Local capability check fails after hard expiry; failed refresh clears cache | Tunable retry budget without stale authorization |
+| A gameplay resource bypasses host policy or a player changes account | Adapter records the establishing host resource, accepts grant queries only from it, and re-resolves the trusted current account for every query | Host facade must still compose each grant with local action policy |
 | Brute force/challenge abuse | High-entropy codes, short expiry, fixed-window account limits | Shared IP/account limiter and abuse telemetry |
 | Configuration grants unintended power | Installation allowlist intersects role mapping | Signed policy releases and two-person review |
 | Audit modification | Hash chain exposes edits/reordering within exported stream | WORM/object-lock export and external checkpoints |

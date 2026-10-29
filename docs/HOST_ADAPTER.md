@@ -21,8 +21,8 @@ Every export requires an MTA server resource caller. Pre-auth begin, exchange, a
 - `activateLoginSession(player, accountId)` is called only after the host's local admission checks succeed. It requires the exact adapter-held pending account/generation, exchanges the server-held activation ticket, then caches the bounded session and emits the activation event. The account ID is a trusted server-to-server host result, never client input.
 - `beginLink(player)` resolves the current host account and starts an asynchronous challenge request.
 - `exchangeTicket(player, ticket)` resolves the account again and asynchronously exchanges a one-use ticket. A successful response caches the bounded session for that player and account.
-- `hasCapability(player, name)` reads only the adapter-local cache and returns true when that cache contains an unexpired named capability.
-- `getDonorTier(player)` reads the same unexpired local entry and returns its independent informational tier or nil.
+- `hasCapability(player, name)` is callable only by the host resource that established the session. It re-resolves the current server-side account on every call and returns true only when that account still matches an unexpired adapter-local entry containing the named capability.
+- `getDonorTier(player)` applies the same host-resource and current-account binding, then returns the independent informational tier or nil.
 - `clearPlayerSession(player)` increments the player's request generation and deletes only the adapter-local cached session.
 
 The asynchronous exports return only the immediate `fetchRemote` initiation result. They do not return the completed HTTP result. Host code must observe these server-only events instead:
@@ -44,7 +44,7 @@ On `login-authorized`, the host must validate and load the returned account thro
 
 Call `clearPlayerSession(player)` immediately on host logout and before binding the same player element to a different account. The adapter also calls it on `onPlayerQuit`. If a host's character switch preserves the same authenticated account, the account-level identity session may remain; if the switch also logs out or replaces the account, clear it first.
 
-The heartbeat independently resolves the current account. If it differs from the account stored with the session, the adapter clears local state without emitting `grants-changed`. This is a fallback, not a replacement for clearing synchronously during logout or account switch: `hasCapability` itself does not re-resolve the account on every call.
+The heartbeat independently resolves the current account. If it differs from the account stored with the session, the adapter clears local state. Capability and donor queries also re-resolve the account and clear mismatched state immediately. This is still not a replacement for clearing synchronously during logout or account switch.
 
 `clearPlayerSession` is not unlink. It does not call the service, delete the account-to-Discord link, or revoke the remote session. Permanent unlink is the authenticated service operation `POST /v1/accounts/unlink`; the current MTA resource does not expose that operation. A host unlink workflow therefore requires a separate adapter/API operation and should clear local state immediately while remote revocation is completed.
 
@@ -57,6 +57,8 @@ Events are server-only. Do not mirror capabilities, donor tiers, tickets, sessio
 A named grant answers only “may this account potentially invoke this class of operation?” The host must still enforce local rules from authoritative state. For example:
 
 ```lua
+-- Only the designated host integration resource may call the adapter directly.
+-- Other resources call that host's server-only authorization facade.
 if not exports["mta-discord-identity"]:hasCapability(client, "staff.players.kick") then return end
 if not localPolicyAllowsTarget(client, target) then return end
 ```

@@ -91,6 +91,7 @@ end
 function exchangeTicket(player, ticket)
     if not sourceResource then return false, "host resource required" end
     if type(ticket) ~= "string" or #ticket > 256 then return false, "invalid ticket" end
+    local hostResource = sourceResource
     local accountId = trustedAccountId(player)
     if not accountId then return false, "no trusted account session" end
     nextGeneration(player)
@@ -98,7 +99,7 @@ function exchangeTicket(player, ticket)
         if result and result.accountId == accountId and type(result.expiresAt) == "number" then
             local caps = {}
             for _, capability in ipairs(result.capabilities or {}) do caps[capability] = true end
-            cache[player] = { accountId = accountId, sessionToken = result.sessionToken, expiresAt = result.expiresAt, capabilities = caps, donorTier = result.donorTier }
+            cache[player] = { accountId = accountId, sessionToken = result.sessionToken, expiresAt = result.expiresAt, capabilities = caps, donorTier = result.donorTier, hostResource = hostResource }
             triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player)
         else
             cache[player] = nil
@@ -169,6 +170,7 @@ function activateLoginSession(player, accountId)
                 expiresAt = result.expiresAt,
                 capabilities = caps,
                 donorTier = result.donorTier,
+                hostResource = pending.hostResource,
             }
             pendingLoginAdmissions[player] = nil
             triggerEvent("mta-discord-identity:login-session-activated", resourceRoot, player, result.accountId)
@@ -186,14 +188,28 @@ function activateLoginSession(player, accountId)
     return started
 end
 
-function hasCapability(player, capability)
+local function authorizedEntry(player)
+    local callerResource = sourceResource
     local entry = cache[player]
-    return entry ~= nil and entry.expiresAt > nowSeconds() and entry.capabilities[capability] == true
+    if not callerResource or not entry or entry.hostResource ~= callerResource or entry.expiresAt <= nowSeconds() then
+        return nil
+    end
+    if trustedAccountId(player) ~= entry.accountId then
+        clearPlayerSession(player)
+        triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player)
+        return nil
+    end
+    return entry
+end
+
+function hasCapability(player, capability)
+    local entry = authorizedEntry(player)
+    return entry ~= nil and type(capability) == "string" and entry.capabilities[capability] == true
 end
 
 function getDonorTier(player)
-    local entry = cache[player]
-    if not entry or entry.expiresAt <= nowSeconds() then return nil end
+    local entry = authorizedEntry(player)
+    if not entry then return nil end
     return entry.donorTier
 end
 

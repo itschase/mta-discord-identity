@@ -1,5 +1,5 @@
 <meta>
-    <info author="mta-discord-identity contributors" name="MTA Discord Identity Adapter" version="0.2.0" type="script" />
+    <info author="mta-discord-identity contributors" name="MTA Discord Identity Adapter" version="0.2.1" type="script" />
     <script src="server/config.lua" type="server" />
     <script src="server/adapter.lua" type="server" />
     <export function="beginLink" type="server" />
