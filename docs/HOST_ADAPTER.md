@@ -24,7 +24,7 @@ Every export requires an MTA server resource caller. Pre-auth begin, exchange, a
 - `exchangeTicket(player, ticket)` resolves the account again and asynchronously exchanges a one-use ticket. A successful response caches the bounded session for that player and account.
 - `hasCapability(player, name)` is callable only by the host resource that established the session. It re-resolves the current server-side account on every call and returns true only when that account still matches an unexpired adapter-local entry containing the named capability.
 - `getDonorTier(player)` applies the same host-resource and current-account binding, then returns the independent informational tier or nil.
-- `clearPlayerSession(player)` increments the player's request generation and deletes only the adapter-local cached session.
+- `clearPlayerSession(player)` accepts only the resource that owns the current cached/pending lifecycle, increments the player's request generation, and deletes only the adapter-local cached and pending state.
 
 The asynchronous exports return only the immediate `fetchRemote` initiation result. They do not return the completed HTTP result. Host code must observe these server-only events instead:
 
@@ -44,7 +44,7 @@ On `login-authorized`, the host must validate and load the returned account thro
 
 ## Account lifecycle and cleanup
 
-Call `clearPlayerSession(player)` immediately on host logout and before binding the same player element to a different account. The adapter also calls it on `onPlayerQuit`. If a host's character switch preserves the same authenticated account, the account-level identity session may remain; if the switch also logs out or replaces the account, clear it first.
+Call `clearPlayerSession(player)` immediately on host logout, host-resource teardown, and before binding the same player element to a different account. Starting a new pre-auth login also clears any older cached session. The adapter clears internally on `onPlayerQuit`. If a host's character switch preserves the same authenticated account, the account-level identity session may remain; if the switch also logs out or replaces the account, clear it first.
 
 The heartbeat independently resolves the current account. If it differs from the account stored with the session, the adapter clears local state. Capability and donor queries also re-resolve the account and clear mismatched state immediately. This is still not a replacement for clearing synchronously during logout or account switch.
 

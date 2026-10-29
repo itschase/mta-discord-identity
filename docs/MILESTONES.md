@@ -22,6 +22,7 @@
 - [x] Stage capability-session activation behind explicit host acceptance of local admission (source only; M2/M3 remain release blockers)
 - [x] Bind grant queries to the establishing host resource and re-resolve the trusted account at every query (source only; M2/M3 remain release blockers)
 - [x] Distinguish confirmed identity authorization revocation from role changes, expiry, and transport/provider failure (source only; M2/M3 remain release blockers)
+- [x] Bind explicit adapter cleanup to the owning host resource and clear older cache state on new pre-auth login (source only; M2/M3 remain release blockers)
 
 ## M2 — Durable multi-instance service ([Issue #2](https://github.com/itschase/mta-discord-identity/issues/2))
 

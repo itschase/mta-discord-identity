@@ -20,6 +20,7 @@ Automated source coverage introduced in v0.1:
 - capability and donor queries are accepted only from the resource that established the session, re-resolve the host's current account, and clear a mismatched session;
 - link removal and required-membership loss return `IDENTITY_AUTHORIZATION_REVOKED`, while expiry and transient refresh failures do not produce the adapter's terminal revocation event;
 - the resource exports host contract version `2`, allowing hosts to reject older adapters that lack the terminal revocation contract;
+- only the resource owning the current cached or pending lifecycle can clear it, and starting a new pre-auth login cannot retain an older cached grant session;
 - pre-auth login tickets are one-use and reject a mismatched connection generation without consuming the valid ticket.
 - link creation rejects a second account for the same installation-scoped Discord subject, while login independently fails closed on ambiguity.
 

@@ -17,6 +17,14 @@ local function nextGeneration(player)
     return generations[player]
 end
 
+local function clearPlayerState(player)
+    nextGeneration(player)
+    cache[player] = nil
+    loginAttempts[player] = nil
+    pendingLoginAdmissions[player] = nil
+    return true
+end
+
 local function trustedAccountId(player)
     -- Host resources provide this event. They must derive IDs from server-side login state.
     local result
@@ -65,6 +73,7 @@ function beginLogin(player)
     if not isElement(player) or getElementType(player) ~= "player" then return false, "invalid player" end
     local hostResource = sourceResource
     local connectionGeneration = nextGeneration(player)
+    cache[player] = nil
     loginAttempts[player] = nil
     pendingLoginAdmissions[player] = nil
     local started = request(player, "POST", "/v1/login-challenges", { connectionGeneration = connectionGeneration }, function(result, info)
@@ -199,7 +208,7 @@ local function authorizedEntry(player)
         return nil
     end
     if trustedAccountId(player) ~= entry.accountId then
-        clearPlayerSession(player)
+        clearPlayerState(player)
         triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player)
         return nil
     end
@@ -218,21 +227,23 @@ function getDonorTier(player)
 end
 
 function clearPlayerSession(player)
-    nextGeneration(player)
-    cache[player] = nil
-    loginAttempts[player] = nil
-    pendingLoginAdmissions[player] = nil
-    return true
+    if not sourceResource then return false, "host resource required" end
+    local entry = cache[player]
+    local attempt = loginAttempts[player]
+    local pending = pendingLoginAdmissions[player]
+    local hostResource = (entry and entry.hostResource) or (attempt and attempt.hostResource) or (pending and pending.hostResource)
+    if hostResource and sourceResource ~= hostResource then return false, "host resource mismatch" end
+    return clearPlayerState(player)
 end
 
 local function refresh(player)
     local entry = cache[player]
     if not entry or entry.expiresAt <= nowSeconds() then
-        if entry then clearPlayerSession(player); triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player) end
+        if entry then clearPlayerState(player); triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player) end
         return
     end
     local accountId = trustedAccountId(player)
-    if accountId ~= entry.accountId then clearPlayerSession(player); return end
+    if accountId ~= entry.accountId then clearPlayerState(player); return end
     -- fetchRemote cannot safely start dependent work from the same queue callback;
     -- every heartbeat is an independent timer invocation.
     local options = {
@@ -256,7 +267,7 @@ local function refresh(player)
             local errorCode = type(decoded) == "table" and type(decoded.error) == "table" and decoded.error.code or nil
             local confirmedRevocation = errorCode == "IDENTITY_AUTHORIZATION_REVOKED"
             local revokedAccountId = entry.accountId
-            clearPlayerSession(player)
+            clearPlayerState(player)
             if confirmedRevocation then
                 triggerEvent("mta-discord-identity:authorization-revoked", resourceRoot, player, revokedAccountId)
             else
@@ -281,6 +292,6 @@ addEvent("mta-discord-identity:login-session-failed", false)
 addEvent("mta-discord-identity:grants-changed", false)
 addEvent("mta-discord-identity:session-failed", false)
 addEvent("mta-discord-identity:authorization-revoked", false)
-addEventHandler("onPlayerQuit", root, function() clearPlayerSession(source) end)
+addEventHandler("onPlayerQuit", root, function() clearPlayerState(source) end)
 addEventHandler("onResourceStop", resourceRoot, function() resourceGeneration = resourceGeneration + 1 end)
 setTimer(function() for player in pairs(cache) do refresh(player) end end, IdentityConfig.heartbeatMs, 0)

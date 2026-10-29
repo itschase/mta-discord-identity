@@ -20,6 +20,7 @@
 | Stale async callback restores grants | Per-player and per-resource generations | Cancellation handles and chaos tests in MTA |
 | Service outage grants authority | Local capability check fails after hard expiry; failed refresh clears cache | Tunable retry budget without stale authorization |
 | A gameplay resource bypasses host policy or a player changes account | Adapter records the establishing host resource, accepts grant queries only from it, and re-resolves the trusted current account for every query | Host facade must still compose each grant with local action policy |
+| Another server resource clears a player's identity lease | Explicit cleanup is accepted only from the resource owning the cached or pending lifecycle; internal timer and player-quit cleanup use a non-exported primitive | Runtime-test host/resource stop ordering and malicious cross-resource calls |
 | Brute force/challenge abuse | High-entropy codes, short expiry, fixed-window account limits | Shared IP/account limiter and abuse telemetry |
 | Configuration grants unintended power | Installation allowlist intersects role mapping | Signed policy releases and two-person review |
 | Audit modification | Hash chain exposes edits/reordering within exported stream | WORM/object-lock export and external checkpoints |
