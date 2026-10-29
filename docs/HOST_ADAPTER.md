@@ -15,7 +15,8 @@ The callback-function event contract has not yet been exercised in a live multi-
 Use server exports:
 
 - `beginLogin(player)` starts a distinct asynchronous pre-authentication challenge and does not require the host account resolver.
-- `exchangeLoginTicket(player, ticket)` exchanges against the adapter-held challenge, connection token, and generation. Success emits only the linked opaque account reference; it does not bind the host account automatically.
+- `exchangeLoginTicket(player, ticket)` exchanges against the adapter-held challenge, connection token, and generation. The adapter retains the returned activation ticket and emits only the linked opaque account reference; it does not bind the host account automatically.
+- `activateLoginSession(player, accountId)` is called only after the host's local admission checks succeed. It requires the exact adapter-held pending account/generation, exchanges the server-held activation ticket, then caches the bounded session and emits the activation event. The account ID is a trusted server-to-server host result, never client input.
 - `beginLink(player)` resolves the current host account and starts an asynchronous challenge request.
 - `exchangeTicket(player, ticket)` resolves the account again and asynchronously exchanges a one-use ticket. A successful response caches the bounded session for that player and account.
 - `hasCapability(player, name)` reads only the adapter-local cache and returns true when that cache contains an unexpired named capability.
@@ -27,13 +28,15 @@ The asynchronous exports return only the immediate `fetchRemote` initiation resu
 - `mta-discord-identity:login-challenge(player, result, statusCode)` after challenge creation; `result` deliberately omits the server-only connection token;
 - `mta-discord-identity:login-authorized(player, accountId)` after a bound one-use ticket returns exactly one existing opaque account reference;
 - `mta-discord-identity:login-failed(player, statusCode)` when challenge creation or exchange fails;
+- `mta-discord-identity:login-session-activated(player, accountId)` after post-admission activation stores a bounded capability session;
+- `mta-discord-identity:login-session-failed(player, statusCode)` when post-admission activation fails without publishing grants;
 - `mta-discord-identity:link-challenge(player, result, statusCode)` after challenge creation completes;
 - `mta-discord-identity:grants-changed(player)` after grants are stored or refreshed, and when expiry or a failed refresh follows the event-emitting clear paths;
 - `mta-discord-identity:session-failed(player, statusCode)` when ticket exchange does not produce a valid bound session.
 
 These events are emitted with the adapter resource root as `source`. Host handlers should validate that source before consuming their arguments. A superseded request callback is ignored when its player generation no longer matches.
 
-On `login-authorized`, the host must validate and load the returned account through its own trusted server data, run ban/device/status/duplicate-session checks, and only then establish the game session. This slice supports already-linked identities only. It neither registers accounts nor accepts account or Discord identifiers from a client.
+On `login-authorized`, the host must validate and load the returned account through its own trusted server data and run ban/device/status/duplicate-session checks without yet publishing the game session. If those checks pass, it calls `activateLoginSession`; only `login-session-activated` permits the host to commit local login state. Activation failure must discard the pending local admission and fail closed. This slice supports already-linked identities only. It neither registers accounts nor accepts account or Discord identifiers from a client.
 
 ## Account lifecycle and cleanup
 

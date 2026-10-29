@@ -1,6 +1,7 @@
 local cache = setmetatable({}, { __mode = "k" })
 local generations = setmetatable({}, { __mode = "k" })
 local loginAttempts = setmetatable({}, { __mode = "k" })
+local pendingLoginAdmissions = setmetatable({}, { __mode = "k" })
 local resourceGeneration = 1
 
 local function nowSeconds()
@@ -57,9 +58,12 @@ end
 
 function beginLogin(player)
     if sourceResource and client then return false, "server-only export" end
+    if not sourceResource then return false, "host resource required" end
     if not isElement(player) or getElementType(player) ~= "player" then return false, "invalid player" end
+    local hostResource = sourceResource
     local connectionGeneration = nextGeneration(player)
     loginAttempts[player] = nil
+    pendingLoginAdmissions[player] = nil
     local started = request(player, "POST", "/v1/login-challenges", { connectionGeneration = connectionGeneration }, function(result, info)
         if result and type(result.challengeId) == "string" and type(result.connectionToken) == "string" and type(result.expiresAt) == "number" then
             loginAttempts[player] = {
@@ -68,6 +72,7 @@ function beginLogin(player)
                 connectionGeneration = connectionGeneration,
                 expiresAt = result.expiresAt,
                 exchanging = false,
+                hostResource = hostResource,
             }
             local publicResult = {
                 challengeId = result.challengeId,
@@ -110,6 +115,7 @@ function exchangeLoginTicket(player, ticket)
     if not attempt or attempt.exchanging or attempt.connectionGeneration ~= (generations[player] or 0) or attempt.expiresAt <= nowSeconds() then
         return false, "no current login challenge"
     end
+    if sourceResource ~= attempt.hostResource then return false, "host resource mismatch" end
     attempt.exchanging = true
     local started = request(player, "POST", "/v1/login-sessions/exchange", {
         ticket = ticket,
@@ -118,8 +124,15 @@ function exchangeLoginTicket(player, ticket)
         connectionGeneration = attempt.connectionGeneration,
     }, function(result, info)
         attempt.exchanging = false
-        if result and type(result.accountId) == "string" and result.accountId ~= "" then
+        if result and type(result.accountId) == "string" and result.accountId ~= "" and type(result.sessionTicket) == "string" and result.sessionTicket ~= "" then
             loginAttempts[player] = nil
+            pendingLoginAdmissions[player] = {
+                accountId = result.accountId,
+                sessionTicket = result.sessionTicket,
+                connectionGeneration = attempt.connectionGeneration,
+                activating = false,
+                hostResource = attempt.hostResource,
+            }
             triggerEvent("mta-discord-identity:login-authorized", resourceRoot, player, result.accountId)
         else
             triggerEvent("mta-discord-identity:login-failed", resourceRoot, player, info.statusCode)
@@ -128,6 +141,48 @@ function exchangeLoginTicket(player, ticket)
     if not started then
         attempt.exchanging = false
         triggerEvent("mta-discord-identity:login-failed", resourceRoot, player, 0)
+    end
+    return started
+end
+
+function activateLoginSession(player, accountId)
+    if client then return false, "server-only export" end
+    if not isElement(player) or getElementType(player) ~= "player" then return false, "invalid player" end
+    if type(accountId) ~= "string" or accountId == "" or #accountId > 128 then return false, "invalid account" end
+    local pending = pendingLoginAdmissions[player]
+    if not pending or pending.activating or pending.accountId ~= accountId
+        or pending.connectionGeneration ~= (generations[player] or 0) then
+        return false, "no matching login admission"
+    end
+    if sourceResource ~= pending.hostResource then return false, "host resource mismatch" end
+    pending.activating = true
+    local started = request(player, "POST", "/v1/sessions/exchange", {
+        ticket = pending.sessionTicket,
+        accountId = pending.accountId,
+    }, function(result, info)
+        if result and result.accountId == pending.accountId and type(result.sessionToken) == "string"
+            and type(result.expiresAt) == "number" and type(result.capabilities) == "table" then
+            local caps = {}
+            for _, capability in ipairs(result.capabilities) do caps[capability] = true end
+            cache[player] = {
+                accountId = pending.accountId,
+                sessionToken = result.sessionToken,
+                expiresAt = result.expiresAt,
+                capabilities = caps,
+                donorTier = result.donorTier,
+            }
+            pendingLoginAdmissions[player] = nil
+            triggerEvent("mta-discord-identity:login-session-activated", resourceRoot, player, result.accountId)
+            triggerEvent("mta-discord-identity:grants-changed", resourceRoot, player)
+        else
+            pendingLoginAdmissions[player] = nil
+            cache[player] = nil
+            triggerEvent("mta-discord-identity:login-session-failed", resourceRoot, player, info.statusCode)
+        end
+    end)
+    if not started then
+        pendingLoginAdmissions[player] = nil
+        triggerEvent("mta-discord-identity:login-session-failed", resourceRoot, player, 0)
     end
     return started
 end
@@ -147,6 +202,7 @@ function clearPlayerSession(player)
     nextGeneration(player)
     cache[player] = nil
     loginAttempts[player] = nil
+    pendingLoginAdmissions[player] = nil
     return true
 end
 
@@ -193,6 +249,8 @@ addEvent("mta-discord-identity:link-challenge", false)
 addEvent("mta-discord-identity:login-challenge", false)
 addEvent("mta-discord-identity:login-authorized", false)
 addEvent("mta-discord-identity:login-failed", false)
+addEvent("mta-discord-identity:login-session-activated", false)
+addEvent("mta-discord-identity:login-session-failed", false)
 addEvent("mta-discord-identity:grants-changed", false)
 addEvent("mta-discord-identity:session-failed", false)
 addEventHandler("onPlayerQuit", root, function() clearPlayerSession(source) end)

@@ -20,7 +20,7 @@ Request: `{"accountId":"local-stable-id"}`
 
 Response 201: `challengeId`, one-time display `code`, `expiresAt` Unix seconds, and `verificationUrl`.
 
-Use `Idempotency-Key` in M1. In v0.1 retries can create multiple challenges; all remain account-bound and expire.
+Use `Idempotency-Key` in M1. In the current process-local release, retries can create multiple challenges; all remain account-bound and expire.
 
 ### `POST /v1/login-challenges`
 
@@ -61,7 +61,7 @@ Raw Discord guilds, roles, names, and IDs are forbidden in this response.
 
 Body: `{"ticket":"opaque","challengeId":"opaque","connectionToken":"server-only","connectionGeneration":7}`. Atomically consumes a short-lived pre-auth login ticket only when every installation, challenge, connection-token, and generation binding matches. Replays and cross-connection exchanges fail.
 
-Response 200: `{"accountId":"local-stable-id"}`. This operation returns only the previously linked opaque account reference. It does not provision an account, create a capability session, return Discord data, or change role/donor policy. The trusted host must still load and validate that account before establishing its game session.
+Response 200: `{"accountId":"local-stable-id","sessionTicket":"server-held-one-use-ticket"}`. This operation returns the previously linked opaque account reference plus a short-lived server-held activation ticket. It does not provision an account, create a capability session, return Discord data, or change role/donor policy. The adapter must never emit `sessionTicket` to a client. The trusted host first loads and validates the account; only after local admission succeeds does it call `activateLoginSession`, which exchanges this ticket through `POST /v1/sessions/exchange` and caches the bounded capability session.
 
 ### `POST /v1/sessions/refresh`
 
@@ -92,4 +92,4 @@ Available only when the development provider is enabled. It accepts a challenge 
 - Deny users outside configured guild policy.
 - Never pass provider access/refresh tokens to MTA.
 - Re-fetch current membership and roles on ticket exchange and each heartbeat refresh. Member absence revokes the link and all sessions. Gateway events are a future latency optimization, not a current runtime claim.
-- Pre-auth login state is process-local in v0.1. A service restart safely invalidates the challenge, connection binding, and ticket, but also loses links; production continuity requires M2 durable storage and transactional ticket consumption.
+- Pre-auth login state is process-local in the current release. A service restart safely invalidates the challenge, connection binding, and ticket, but also loses links; production continuity requires M2 durable storage and transactional ticket consumption.

@@ -34,6 +34,28 @@ test('HTTP vertical slice creates, redeems, and exchanges without role leakage',
   assert.equal(JSON.stringify(session).includes('100'), false);
 }));
 
+test('HTTP pre-auth login requires host activation before a capability session exists', async () => withServer(async (f, url) => {
+  const auth = { authorization: `Bearer ${f.config.installation.secret}`, 'content-type': 'application/json' };
+  const linkChallenge = await (await fetch(`${url}/v1/link-challenges`, { method: 'POST', headers: auth, body: JSON.stringify({ accountId: 'account-1' }) })).json();
+  await fetch(`${url}/v1/development/redeem`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: linkChallenge.code, discordSubject: 'discordUser' }) });
+
+  const challengeResponse = await fetch(`${url}/v1/login-challenges`, { method: 'POST', headers: auth, body: JSON.stringify({ connectionGeneration: 7 }) });
+  assert.equal(challengeResponse.status, 201);
+  const challenge = await challengeResponse.json();
+  const loginTicket = await (await fetch(`${url}/v1/development/login/redeem`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: challenge.code, discordSubject: 'discordUser' }) })).json();
+  const admissionResponse = await fetch(`${url}/v1/login-sessions/exchange`, { method: 'POST', headers: auth, body: JSON.stringify({ ticket: loginTicket.ticket, challengeId: challenge.challengeId, connectionToken: challenge.connectionToken, connectionGeneration: 7 }) });
+  assert.equal(admissionResponse.status, 200);
+  const admission = await admissionResponse.json();
+  assert.equal(admission.accountId, 'account-1');
+  assert.equal(typeof admission.sessionTicket, 'string');
+  assert.equal(f.store.sessions.size, 0);
+
+  const activatedResponse = await fetch(`${url}/v1/sessions/exchange`, { method: 'POST', headers: auth, body: JSON.stringify({ ticket: admission.sessionTicket, accountId: admission.accountId }) });
+  assert.equal(activatedResponse.status, 201);
+  const session = await activatedResponse.json();
+  assert.deepEqual(session.capabilities, ['staff.reports.view']);
+}));
+
 test('browser link flow keeps challenge code out of URLs and renders one-use ticket', async () => {
   const calls = [];
   const core = {

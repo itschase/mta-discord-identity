@@ -86,15 +86,22 @@ test('challenge rate limit is per account and window', async () => {
   await f.core.createChallenge('account-1');
 });
 
-test('pre-auth login ticket returns only the linked opaque account and is one-use', async () => {
+test('pre-auth login issues a server-held activation ticket and does not create grants before activation', async () => {
   const f = fixture();
   const link = await f.core.createChallenge('account-1');
   await f.core.redeemDevelopmentChallenge(link.code, 'discordUser');
   const challenge = await f.core.createLoginChallenge(7);
   const { ticket } = await f.core.redeemDevelopmentLoginChallenge(challenge.code, 'discordUser');
   const result = await f.core.exchangeLoginTicket(ticket, challenge.challengeId, challenge.connectionToken, 7);
-  assert.deepEqual(result, { accountId: 'account-1' });
+  assert.equal(result.accountId, 'account-1');
+  assert.equal(typeof result.sessionTicket, 'string');
+  assert.equal(f.store.sessions.size, 0);
+  const session = await f.core.exchangeTicket(result.sessionTicket, result.accountId);
+  assert.equal(session.accountId, 'account-1');
+  assert.deepEqual(session.capabilities, ['staff.reports.view']);
+  assert.equal(f.store.sessions.size, 1);
   await assert.rejects(f.core.exchangeLoginTicket(ticket, challenge.challengeId, challenge.connectionToken, 7), { code: 'INVALID_TICKET' });
+  await assert.rejects(f.core.exchangeTicket(result.sessionTicket, result.accountId), { code: 'INVALID_TICKET' });
 });
 
 test('pre-auth login rejects another connection generation without consuming the ticket', async () => {
@@ -104,7 +111,9 @@ test('pre-auth login rejects another connection generation without consuming the
   const challenge = await f.core.createLoginChallenge(11);
   const { ticket } = await f.core.redeemDevelopmentLoginChallenge(challenge.code, 'discordUser');
   await assert.rejects(f.core.exchangeLoginTicket(ticket, challenge.challengeId, challenge.connectionToken, 12), { code: 'INVALID_TICKET' });
-  assert.deepEqual(await f.core.exchangeLoginTicket(ticket, challenge.challengeId, challenge.connectionToken, 11), { accountId: 'account-1' });
+  const result = await f.core.exchangeLoginTicket(ticket, challenge.challengeId, challenge.connectionToken, 11);
+  assert.equal(result.accountId, 'account-1');
+  assert.equal(typeof result.sessionTicket, 'string');
 });
 
 test('pre-auth login rejects another connection token without consuming the ticket', async () => {
@@ -114,7 +123,9 @@ test('pre-auth login rejects another connection token without consuming the tick
   const challenge = await f.core.createLoginChallenge(13);
   const { ticket } = await f.core.redeemDevelopmentLoginChallenge(challenge.code, 'discordUser');
   await assert.rejects(f.core.exchangeLoginTicket(ticket, challenge.challengeId, 'wrong-connection-token', 13), { code: 'INVALID_TICKET' });
-  assert.deepEqual(await f.core.exchangeLoginTicket(ticket, challenge.challengeId, challenge.connectionToken, 13), { accountId: 'account-1' });
+  const result = await f.core.exchangeLoginTicket(ticket, challenge.challengeId, challenge.connectionToken, 13);
+  assert.equal(result.accountId, 'account-1');
+  assert.equal(typeof result.sessionTicket, 'string');
 });
 
 test('pre-auth login fails closed if the linked installation changes before exchange', async () => {

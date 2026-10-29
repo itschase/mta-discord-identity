@@ -24,7 +24,8 @@
 | Audit modification | Hash chain exposes edits/reordering within exported stream | WORM/object-lock export and external checkpoints |
 | OAuth login CSRF/code interception | High-entropy hashed one-use state, PKCE S256, exact configured redirect | Validate against a live Discord application deployment |
 | Pre-auth ticket used on another connection | Installation-bound challenge plus random adapter-held connection token and exact connection generation; one-use short-lived ticket | Validate teardown/reconnect races in a real MTA runtime |
-| Client supplies account or Discord identity during login | Login challenge accepts neither; OAuth subject resolves exactly one existing service link and exchange returns only its opaque account reference | Conformance-test every host account load/session commit boundary |
+| Client supplies account or Discord identity during login | Login challenge accepts neither; OAuth subject resolves exactly one existing service link, the adapter emits only its opaque account reference, and the activation ticket remains server-held | Conformance-test every host account load/session commit boundary |
+| Discord grants activate before local ban/device/account checks | Pre-auth exchange creates only a short-lived activation ticket; the adapter caches grants only after the trusted host explicitly accepts the matching account admission | Test every local rejection and activation failure before local session commit |
 | Stale Discord roles | Current member lookup at ticket exchange and each heartbeat; absence revokes link/sessions | Optional Guild Members Gateway consumer for lower latency |
 | SSRF/redirect downgrade from MTA | Fixed operator-configured base URL, no user URL input | Enforce HTTPS and certificate policy at startup |
 
@@ -32,7 +33,7 @@
 
 The service does not decide faction membership, duty, target immunity, ownership, proximity, inventory, prices, or punishment policy. A capability is never sufficient by itself for a gameplay mutation.
 
-## Residual risks in v0.1
+## Residual risks in the current process-local release
 
 - Lifecycle state is process-local and disappears on restart.
 - Audit output is tamper-evident only within the file and has no external checkpoint.

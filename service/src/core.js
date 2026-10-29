@@ -128,7 +128,7 @@ export class IdentityCore {
     const rate = this.limiter.take(`exchange:${accountId}`, this.config.rateLimits.ticketExchangesPerWindow, now);
     if (!rate.allowed) fail(429, 'RATE_LIMITED', `retry after ${rate.retryAfter} seconds`);
     const item = this.store.tickets.get(sha256(ticket));
-    if (!item || item.accountId !== accountId || item.expiresAt <= now || item.consumedAt || item.revokedAt) fail(400, 'INVALID_TICKET', 'ticket is invalid, expired, revoked, or already consumed');
+    if (!item || !['link', 'login_activation'].includes(item.purpose) || item.accountId !== accountId || item.expiresAt <= now || item.consumedAt || item.revokedAt) fail(400, 'INVALID_TICKET', 'ticket is invalid, expired, revoked, or already consumed');
     const link = this.store.links.get(accountId);
     if (!link) fail(400, 'INVALID_TICKET', 'ticket account is no longer linked');
     const roleIds = await this.#resolveCurrentRoles(link, accountId);
@@ -181,7 +181,17 @@ export class IdentityCore {
     }
     item.consumedAt = now;
     await this.audit.append('login_ticket.consumed', { challengeId, accountId: item.accountId, installationId: item.installationId, connectionGeneration });
-    return { accountId: item.accountId };
+    const sessionTicket = randomToken();
+    this.store.tickets.set(sha256(sessionTicket), {
+      purpose: 'login_activation',
+      accountId: item.accountId,
+      installationId: item.installationId,
+      expiresAt: now + this.config.lifetimes.ticketSeconds,
+      consumedAt: null,
+      revokedAt: null
+    });
+    await this.audit.append('login_admission.issued', { challengeId, accountId: item.accountId, installationId: item.installationId, connectionGeneration });
+    return { accountId: item.accountId, sessionTicket };
   }
   authenticateSession(bearer) {
     const hash = sha256(bearer ?? '');
@@ -238,7 +248,7 @@ export class IdentityCore {
     challenge.status = 'redeemed'; challenge.discordSubject = link.discordSubject;
     this.store.links.set(challenge.accountId, { ...link, installationId: this.config.installation.id, linkedAt: now, lastVerifiedAt: now });
     const ticket = randomToken();
-    this.store.tickets.set(sha256(ticket), { accountId: challenge.accountId, expiresAt: now + this.config.lifetimes.ticketSeconds, consumedAt: null, revokedAt: null });
+    this.store.tickets.set(sha256(ticket), { purpose: 'link', accountId: challenge.accountId, expiresAt: now + this.config.lifetimes.ticketSeconds, consumedAt: null, revokedAt: null });
     await this.audit.append('challenge.redeemed', { challengeId: challenge.id, accountId: challenge.accountId, provider: link.provider, discordSubject: link.discordSubject, capabilityCount: grants.capabilities.length, donorTier: grants.donorTier });
     return { ticket, expiresAt: now + this.config.lifetimes.ticketSeconds };
   }

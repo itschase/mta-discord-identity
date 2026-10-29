@@ -1,6 +1,6 @@
 # Conformance test plan
 
-Automated in v0.1:
+Automated source coverage introduced in v0.1:
 
 - configured roles intersect the installation capability allowlist;
 - donor tier is distinct from capabilities;
@@ -15,7 +15,8 @@ Automated in v0.1:
 - OAuth state rejects altered, expired, and replayed values;
 - code exchange uses server-only credentials and current bot-resolved roles;
 - current role changes replace grants and guild removal revokes sessions.
-- pre-auth login resolves only an existing link and returns only its opaque account reference;
+- pre-auth login resolves only an existing link, emits only its opaque account reference to the host, and keeps the one-use activation ticket inside the adapter;
+- no capability session exists before the host accepts local admission and `activateLoginSession` succeeds;
 - pre-auth login tickets are one-use and reject a mismatched connection generation without consuming the valid ticket.
 - link creation rejects a second account for the same installation-scoped Discord subject, while login independently fails closed on ambiguity.
 

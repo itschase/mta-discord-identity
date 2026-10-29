@@ -18,7 +18,7 @@ This repository includes a dependency-free vertical slice:
 - Discord Authorization Code + PKCE, exact one-use state validation, bot-resolved current guild roles, link challenges, one-use ticket exchange, bounded sessions, heartbeat revocation, rate limits, and hash-chained audit output;
 - configurable Discord-role-to-capability and donor-tier policy;
 - a generic MTA resource using asynchronous `fetchRemote`, request generations, cache expiry, heartbeat refresh, revocation handling, and fail-closed capability checks;
-- a distinct pre-authentication challenge for already-linked Discord identities, bound to an adapter-held connection token and generation, whose one-use exchange returns only the opaque host account reference;
+- a distinct pre-authentication challenge for already-linked Discord identities, bound to an adapter-held connection token and generation; its one-use exchange returns the opaque host account reference plus a server-held activation ticket, and capability state is cached only after the host accepts local admission;
 - a host-adapter example with no OwlMTA schema dependency;
 - contract and conformance tests.
 
