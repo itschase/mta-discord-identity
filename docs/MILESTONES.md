@@ -18,6 +18,7 @@
 - [x] Avoid provider-token storage; no refresh token is required
 - [x] Add heartbeat-bounded role/member revocation and audit event
 - [ ] Add idempotency-key storage for mutating API operations
+- [x] Add a connection-bound pre-authentication challenge for already-linked identities (source only; M2/M3 remain release blockers)
 
 ## M2 — Durable multi-instance service ([Issue #2](https://github.com/itschase/mta-discord-identity/issues/2))
 

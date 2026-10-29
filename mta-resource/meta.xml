@@ -3,7 +3,9 @@
     <script src="server/config.lua" type="server" />
     <script src="server/adapter.lua" type="server" />
     <export function="beginLink" type="server" />
+    <export function="beginLogin" type="server" />
     <export function="exchangeTicket" type="server" />
+    <export function="exchangeLoginTicket" type="server" />
     <export function="hasCapability" type="server" />
     <export function="getDonorTier" type="server" />
     <export function="clearPlayerSession" type="server" />

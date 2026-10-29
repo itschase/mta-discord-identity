@@ -37,6 +37,9 @@ export function validateConfig(c) {
     if (!Number.isInteger(c.lifetimes?.[name]) || c.lifetimes[name] <= 0) throw new Error(`lifetimes.${name} must be a positive integer`);
   }
   if (c.lifetimes.absoluteSessionSeconds < c.lifetimes.sessionSeconds) throw new Error('lifetimes.absoluteSessionSeconds must be at least sessionSeconds');
+  for (const name of ['windowSeconds', 'challengeCreatesPerWindow', 'loginChallengeCreatesPerWindow', 'ticketExchangesPerWindow']) {
+    if (!Number.isInteger(c.rateLimits?.[name]) || c.rateLimits[name] <= 0) throw new Error(`rateLimits.${name} must be a positive integer`);
+  }
   for (const [role, caps] of Object.entries(c.policy.roleCapabilities)) {
     if (role && !/^\d+$/.test(role)) throw new Error(`role ID must be numeric: ${role}`);
     if (!Array.isArray(caps) || caps.some((x) => !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(x))) throw new Error(`invalid capability list for role ${role}`);

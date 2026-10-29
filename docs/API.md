@@ -22,6 +22,12 @@ Response 201: `challengeId`, one-time display `code`, `expiresAt` Unix seconds, 
 
 Use `Idempotency-Key` in M1. In v0.1 retries can create multiple challenges; all remain account-bound and expire.
 
+### `POST /v1/login-challenges`
+
+Creates a pre-authentication challenge for an already-linked Discord identity. Request: `{"connectionGeneration":7}`. The authenticated installation, positive connection generation, random challenge, and server-only connection token are stored together. No account ID or Discord ID is accepted.
+
+Response 201: `challengeId`, one-time display `code`, `expiresAt`, `verificationUrl`, and `connectionToken`. The MTA adapter must keep `connectionToken` server-side and must not emit it to host clients or browser code. The browser-facing `GET /login` and `POST /login` form starts the Discord OAuth flow.
+
 ### `GET /v1/link-challenges/{id}?accountId=...`
 
 Returns `pending`, `redeemed`, `cancelled`, or `expired`. Account binding is mandatory.
@@ -51,6 +57,12 @@ Response 201:
 
 Raw Discord guilds, roles, names, and IDs are forbidden in this response.
 
+### `POST /v1/login-sessions/exchange`
+
+Body: `{"ticket":"opaque","challengeId":"opaque","connectionToken":"server-only","connectionGeneration":7}`. Atomically consumes a short-lived pre-auth login ticket only when every installation, challenge, connection-token, and generation binding matches. Replays and cross-connection exchanges fail.
+
+Response 200: `{"accountId":"local-stable-id"}`. This operation returns only the previously linked opaque account reference. It does not provision an account, create a capability session, return Discord data, or change role/donor policy. The trusted host must still load and validate that account before establishing its game session.
+
 ### `POST /v1/sessions/refresh`
 
 Send installation authentication and `X-Session-Token`. Re-evaluates current policy and advances the rolling expiry without exceeding `absoluteExpiresAt`; it does not rotate the token. A 401 means the adapter must clear grants immediately. Reaching the absolute expiry requires a new link proof and ticket.
@@ -62,6 +74,8 @@ Body: `{"accountId":"..."}`. Removes the link and revokes all account sessions. 
 ### `POST /v1/oauth/discord/start`
 
 Body: `{"code":"user-entered-link-code"}`. Validates the pending challenge, creates a high-entropy hashed one-use state and PKCE S256 verifier, and returns the Discord authorization URL. The browser-facing `GET /link` and `POST /link` form performs the same operation without putting the link code in a URL.
+
+`POST /v1/oauth/discord/login/start` and the `/login` form perform the equivalent operation for a pre-auth login challenge. OAuth completion succeeds only when the immutable Discord subject has exactly one existing link for this installation. An absent or ambiguous link fails closed; this slice does not register or provision accounts.
 
 ### `GET /v1/oauth/discord/callback`
 
@@ -78,3 +92,4 @@ Available only when the development provider is enabled. It accepts a challenge 
 - Deny users outside configured guild policy.
 - Never pass provider access/refresh tokens to MTA.
 - Re-fetch current membership and roles on ticket exchange and each heartbeat refresh. Member absence revokes the link and all sessions. Gateway events are a future latency optimization, not a current runtime claim.
+- Pre-auth login state is process-local in v0.1. A service restart safely invalidates the challenge, connection binding, and ticket, but also loses links; production continuity requires M2 durable storage and transactional ticket consumption.

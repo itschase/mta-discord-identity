@@ -15,6 +15,9 @@ Automated in v0.1:
 - OAuth state rejects altered, expired, and replayed values;
 - code exchange uses server-only credentials and current bot-resolved roles;
 - current role changes replace grants and guild removal revokes sessions.
+- pre-auth login resolves only an existing link and returns only its opaque account reference;
+- pre-auth login tickets are one-use and reject a mismatched connection generation without consuming the valid ticket.
+- link creation rejects a second account for the same installation-scoped Discord subject, while login independently fails closed on ambiguity.
 
 Required before production:
 
@@ -25,6 +28,7 @@ Required before production:
 - optional Discord Gateway member-event consumer for lower revocation latency;
 - MTA runtime tests for resource stop, player quit/account switch, callback reordering, timeout, DNS/TLS failure, and service recovery;
 - host adapter tests proving client-supplied account IDs cannot enter the resolver;
+- MTA runtime tests proving the adapter-held connection token is never emitted and reconnect/clear/resource generations reject stale login callbacks;
 - load and abuse tests with secret/token redaction assertions.
 
 Passing service tests does not establish that an MTA host integration is safe. Each gamemode must test its own local predicates independently.

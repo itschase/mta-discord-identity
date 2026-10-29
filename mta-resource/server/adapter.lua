@@ -1,5 +1,6 @@
 local cache = setmetatable({}, { __mode = "k" })
 local generations = setmetatable({}, { __mode = "k" })
+local loginAttempts = setmetatable({}, { __mode = "k" })
 local resourceGeneration = 1
 
 local function nowSeconds()
@@ -54,6 +55,35 @@ function beginLink(player)
     end)
 end
 
+function beginLogin(player)
+    if sourceResource and client then return false, "server-only export" end
+    if not isElement(player) or getElementType(player) ~= "player" then return false, "invalid player" end
+    local connectionGeneration = nextGeneration(player)
+    loginAttempts[player] = nil
+    local started = request(player, "POST", "/v1/login-challenges", { connectionGeneration = connectionGeneration }, function(result, info)
+        if result and type(result.challengeId) == "string" and type(result.connectionToken) == "string" and type(result.expiresAt) == "number" then
+            loginAttempts[player] = {
+                challengeId = result.challengeId,
+                connectionToken = result.connectionToken,
+                connectionGeneration = connectionGeneration,
+                expiresAt = result.expiresAt,
+                exchanging = false,
+            }
+            local publicResult = {
+                challengeId = result.challengeId,
+                code = result.code,
+                expiresAt = result.expiresAt,
+                verificationUrl = result.verificationUrl,
+            }
+            triggerEvent("mta-discord-identity:login-challenge", resourceRoot, player, publicResult, info.statusCode)
+        else
+            triggerEvent("mta-discord-identity:login-failed", resourceRoot, player, info.statusCode)
+        end
+    end)
+    if not started then triggerEvent("mta-discord-identity:login-failed", resourceRoot, player, 0) end
+    return started
+end
+
 function exchangeTicket(player, ticket)
     if sourceResource and client then return false, "server-only export" end
     if type(ticket) ~= "string" or #ticket > 256 then return false, "invalid ticket" end
@@ -73,6 +103,35 @@ function exchangeTicket(player, ticket)
     end)
 end
 
+function exchangeLoginTicket(player, ticket)
+    if sourceResource and client then return false, "server-only export" end
+    if type(ticket) ~= "string" or ticket == "" or #ticket > 256 then return false, "invalid ticket" end
+    local attempt = loginAttempts[player]
+    if not attempt or attempt.exchanging or attempt.connectionGeneration ~= (generations[player] or 0) or attempt.expiresAt <= nowSeconds() then
+        return false, "no current login challenge"
+    end
+    attempt.exchanging = true
+    local started = request(player, "POST", "/v1/login-sessions/exchange", {
+        ticket = ticket,
+        challengeId = attempt.challengeId,
+        connectionToken = attempt.connectionToken,
+        connectionGeneration = attempt.connectionGeneration,
+    }, function(result, info)
+        attempt.exchanging = false
+        if result and type(result.accountId) == "string" and result.accountId ~= "" then
+            loginAttempts[player] = nil
+            triggerEvent("mta-discord-identity:login-authorized", resourceRoot, player, result.accountId)
+        else
+            triggerEvent("mta-discord-identity:login-failed", resourceRoot, player, info.statusCode)
+        end
+    end)
+    if not started then
+        attempt.exchanging = false
+        triggerEvent("mta-discord-identity:login-failed", resourceRoot, player, 0)
+    end
+    return started
+end
+
 function hasCapability(player, capability)
     local entry = cache[player]
     return entry ~= nil and entry.expiresAt > nowSeconds() and entry.capabilities[capability] == true
@@ -87,6 +146,7 @@ end
 function clearPlayerSession(player)
     nextGeneration(player)
     cache[player] = nil
+    loginAttempts[player] = nil
     return true
 end
 
@@ -130,6 +190,9 @@ end
 
 addEvent("mta-discord-identity:resolve-account", false)
 addEvent("mta-discord-identity:link-challenge", false)
+addEvent("mta-discord-identity:login-challenge", false)
+addEvent("mta-discord-identity:login-authorized", false)
+addEvent("mta-discord-identity:login-failed", false)
 addEvent("mta-discord-identity:grants-changed", false)
 addEvent("mta-discord-identity:session-failed", false)
 addEventHandler("onPlayerQuit", root, function() clearPlayerSession(source) end)

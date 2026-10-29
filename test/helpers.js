@@ -15,7 +15,7 @@ export function fixture(overrides = {}) {
       roleDonorTiers: { '300': 'supporter' }
     },
     lifetimes: { challengeSeconds: 600, oauthStateSeconds: 600, ticketSeconds: 60, sessionSeconds: 600, absoluteSessionSeconds: 3600 },
-    rateLimits: { windowSeconds: 60, challengeCreatesPerWindow: 5, ticketExchangesPerWindow: 10 },
+    rateLimits: { windowSeconds: 60, challengeCreatesPerWindow: 5, loginChallengeCreatesPerWindow: 60, ticketExchangesPerWindow: 10 },
     audit: { path: 'unused' },
     developmentProvider: { enabled: true, subjectRoles: { discordUser: ['100', '300'] } },
     ...overrides

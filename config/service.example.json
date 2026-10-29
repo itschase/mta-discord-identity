@@ -33,6 +33,7 @@
   "rateLimits": {
     "windowSeconds": 60,
     "challengeCreatesPerWindow": 5,
+    "loginChallengeCreatesPerWindow": 60,
     "ticketExchangesPerWindow": 10
   },
   "audit": { "path": "data/audit.ndjson" },

@@ -23,6 +23,8 @@
 | Configuration grants unintended power | Installation allowlist intersects role mapping | Signed policy releases and two-person review |
 | Audit modification | Hash chain exposes edits/reordering within exported stream | WORM/object-lock export and external checkpoints |
 | OAuth login CSRF/code interception | High-entropy hashed one-use state, PKCE S256, exact configured redirect | Validate against a live Discord application deployment |
+| Pre-auth ticket used on another connection | Installation-bound challenge plus random adapter-held connection token and exact connection generation; one-use short-lived ticket | Validate teardown/reconnect races in a real MTA runtime |
+| Client supplies account or Discord identity during login | Login challenge accepts neither; OAuth subject resolves exactly one existing service link and exchange returns only its opaque account reference | Conformance-test every host account load/session commit boundary |
 | Stale Discord roles | Current member lookup at ticket exchange and each heartbeat; absence revokes link/sessions | Optional Guild Members Gateway consumer for lower latency |
 | SSRF/redirect downgrade from MTA | Fixed operator-configured base URL, no user URL input | Enforce HTTPS and certificate policy at startup |
 
@@ -36,3 +38,4 @@ The service does not decide faction membership, duty, target immunity, ownership
 - Audit output is tamper-evident only within the file and has no external checkpoint.
 - Discord OAuth/bot behavior is locally tested with protocol fakes but not yet exercised against real provider credentials.
 - The example MTA resource has been statically reviewed but not run inside an MTA server.
+- Pre-auth login links and ticket state are process-local. Restart fails closed but prevents continuity until M2 durable storage is implemented.

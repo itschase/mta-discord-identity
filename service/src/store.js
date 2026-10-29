@@ -1,6 +1,7 @@
 export class MemoryStore {
   constructor() {
     this.challenges = new Map();
+    this.loginChallenges = new Map();
     this.tickets = new Map();
     this.sessions = new Map();
     this.accountSessions = new Map();
