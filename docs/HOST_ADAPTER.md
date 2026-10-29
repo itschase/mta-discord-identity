@@ -14,6 +14,8 @@ The callback-function event contract has not yet been exercised in a live multi-
 
 Use server exports:
 
+Every export requires an MTA server resource caller. Pre-auth begin, exchange, and activation retain the initiating host resource and reject a later call from a different resource, in addition to the player-generation and account bindings.
+
 - `beginLogin(player)` starts a distinct asynchronous pre-authentication challenge and does not require the host account resolver.
 - `exchangeLoginTicket(player, ticket)` exchanges against the adapter-held challenge, connection token, and generation. The adapter retains the returned activation ticket and emits only the linked opaque account reference; it does not bind the host account automatically.
 - `activateLoginSession(player, accountId)` is called only after the host's local admission checks succeed. It requires the exact adapter-held pending account/generation, exchanges the server-held activation ticket, then caches the bounded session and emits the activation event. The account ID is a trusted server-to-server host result, never client input.

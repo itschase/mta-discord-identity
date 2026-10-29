@@ -47,7 +47,7 @@ local function request(player, method, path, body, onDone)
 end
 
 function beginLink(player)
-    if sourceResource and client then return false, "server-only export" end
+    if not sourceResource then return false, "host resource required" end
     local accountId = trustedAccountId(player)
     if not accountId then return false, "no trusted account session" end
     nextGeneration(player)
@@ -57,7 +57,6 @@ function beginLink(player)
 end
 
 function beginLogin(player)
-    if sourceResource and client then return false, "server-only export" end
     if not sourceResource then return false, "host resource required" end
     if not isElement(player) or getElementType(player) ~= "player" then return false, "invalid player" end
     local hostResource = sourceResource
@@ -90,7 +89,7 @@ function beginLogin(player)
 end
 
 function exchangeTicket(player, ticket)
-    if sourceResource and client then return false, "server-only export" end
+    if not sourceResource then return false, "host resource required" end
     if type(ticket) ~= "string" or #ticket > 256 then return false, "invalid ticket" end
     local accountId = trustedAccountId(player)
     if not accountId then return false, "no trusted account session" end
@@ -109,7 +108,7 @@ function exchangeTicket(player, ticket)
 end
 
 function exchangeLoginTicket(player, ticket)
-    if sourceResource and client then return false, "server-only export" end
+    if not sourceResource then return false, "host resource required" end
     if type(ticket) ~= "string" or ticket == "" or #ticket > 256 then return false, "invalid ticket" end
     local attempt = loginAttempts[player]
     if not attempt or attempt.exchanging or attempt.connectionGeneration ~= (generations[player] or 0) or attempt.expiresAt <= nowSeconds() then
@@ -146,7 +145,7 @@ function exchangeLoginTicket(player, ticket)
 end
 
 function activateLoginSession(player, accountId)
-    if client then return false, "server-only export" end
+    if not sourceResource then return false, "host resource required" end
     if not isElement(player) or getElementType(player) ~= "player" then return false, "invalid player" end
     if type(accountId) ~= "string" or accountId == "" or #accountId > 128 then return false, "invalid account" end
     local pending = pendingLoginAdmissions[player]
